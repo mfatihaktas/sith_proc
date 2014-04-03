@@ -64,11 +64,31 @@ void print_3dmat(uint64_t len, size_t dimx, size_t dimy, double matX[][dimy][dim
     printf("t=%lld\n", t);
     for (uint64_t i = 0; i < dimx; i++){
       for (uint64_t j = 0; j < dimy; j++){
-        printf("%2.2f - ", matX[t][j][i]);
+        printf("%2.2f , ", matX[t][j][i]);
       }
       printf("\n");
     }
     printf("\n");
+  }
+}
+
+void print_2dmat(size_t dimx, size_t dimy, double mat[dimy][dimx]){
+  printf(">>>2d matX\n");
+  for (uint64_t i = 0; i < dimx; i++){
+    for (uint64_t j = 0; j < dimy; j++){
+      printf("%2.2f , ", mat[j][i]);
+    }
+    printf("\n");
+  }
+}
+
+void twodmat_tofile(size_t dimx, size_t dimy, double mat[dimy][dimx], FILE *bfilep){
+  //fprintf(bfilep, "%f", -1.123456);
+  
+  for (uint64_t j = 0; j < dimy; j++){
+    for (uint64_t i = 0; i < dimx; i++){
+      fprintf(bfilep, "%f", mat[j][i]);
+    }
   }
 }
 
@@ -149,6 +169,13 @@ int main (int argc, char** argv)
     printf ("rank %d: Error at opening stream: %s\n", rank, adios_errmsg());
     return adios_errno;
   }
+  //Binary file to write
+  char* bfname = "ecei_data.bp";
+  FILE* bfilep = fopen (bfname , "w+");
+  if (bfilep == NULL){
+    perror ("Error opening file");
+    exit(0);
+  }
   //read data
   ADIOS_VARINFO *v = adios_inq_var(fp, "vol");
   DUMP("len : %lld", v->dims[0]);
@@ -170,8 +197,19 @@ int main (int argc, char** argv)
   sel = adios_selection_boundingbox (3, start, count);
   adios_schedule_read (fp, sel, "vol", 0, 1, matX);
   adios_perform_reads (fp, 1);
+  // 24 row is not clean. Replace with 23-th row data.
+  for (size_t i=0; i < len; i++)
+    for (size_t iy = 0; iy < DIMY; iy++)
+      matX[i][iy][DIMLX-1] = matX[i][iy][DIMLX-2];
   //
-  print_3dmat(1, DIMX, DIMY, matX);
+  printf("len=%d\n", len);
+  //print_3dmat(1, DIMX, DIMY, matX);
+  
+  for (int i=0; i<len; i++){
+    //print_2dmat(DIMX, DIMY, matX[i]);
+    twodmat_tofile(DIMX, DIMY, matX[i], bfilep);
+  }
+  
 
   return 0;
 }
